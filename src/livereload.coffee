@@ -1,4 +1,4 @@
-{ Connector } = require './connector'
+# { Connector } = require './connector'
 { Timer }     = require './timer'
 { Options }   = require './options'
 { Reloader }  = require './reloader'
@@ -14,7 +14,7 @@ exports.LiveReload = class LiveReload
     # i can haz console?
     @console =
       if @window.console && @window.console.log && @window.console.error
-        if @window.location.href.match(/LR-verbose/)
+        if yes # @window.location.href.match(/LR-verbose/)
           @window.console
         else
           log:   ->
@@ -24,61 +24,63 @@ exports.LiveReload = class LiveReload
         error: ->
 
     # i can haz sockets?
-    unless @WebSocket = @window.WebSocket || @window.MozWebSocket
-      @console.error("LiveReload disabled because the browser does not seem to support web sockets")
-      return
+    # unless @WebSocket = @window.WebSocket || @window.MozWebSocket
+    #   @console.error("LiveReload disabled because the browser does not seem to support web sockets")
+    #   return
 
     # i can haz options?
-    if 'LiveReloadOptions' of window
-      @options = new Options()
-      for own k, v of window['LiveReloadOptions']
-        @options.set(k, v)
-    else
-      @options = Options.extract(@window.document)
-      unless @options
-        @console.error("LiveReload disabled because it could not find its own <SCRIPT> tag")
-        return
+    # if 'LiveReloadOptions' of window
+    #   @options = new Options()
+    #   for own k, v of window['LiveReloadOptions']
+    #     @options.set(k, v)
+    # else
+    #   @options = Options.extract(@window.document)
+    #   unless @options
+    #     @console.error("LiveReload disabled because it could not find its own <SCRIPT> tag")
+    #     return
 
     # i can haz reloader?
     @reloader = new Reloader(@window, @console, Timer)
 
-    # i can haz connection?
-    @connector = new Connector @options, @WebSocket, Timer,
-      connecting: =>
+    @window.zotonic_live_reloader = @reloader;
 
-      socketConnected: =>
+    # # i can haz connection?
+    # @connector = new Connector @options, @WebSocket, Timer,
+    #   connecting: =>
 
-      connected: (protocol) =>
-        @listeners.connect?()
-        @log "LiveReload is connected to #{@options.host}:#{@options.port} (protocol v#{protocol})."
-        @analyze()
+    #   socketConnected: =>
 
-      error: (e) =>
-        if e instanceof ProtocolError
-          console.log "#{e.message}." if console?
-        else
-          console.log "LiveReload internal error: #{e.message}" if console?
+    #   connected: (protocol) =>
+    #     @listeners.connect?()
+    #     @log "LiveReload is connected to #{@options.host}:#{@options.port} (protocol v#{protocol})."
+    #     @analyze()
 
-      disconnected: (reason, nextDelay) =>
-        @listeners.disconnect?()
-        switch reason
-          when 'cannot-connect'
-            @log "LiveReload cannot connect to #{@options.host}:#{@options.port}, will retry in #{nextDelay} sec."
-          when 'broken'
-            @log "LiveReload disconnected from #{@options.host}:#{@options.port}, reconnecting in #{nextDelay} sec."
-          when 'handshake-timeout'
-            @log "LiveReload cannot connect to #{@options.host}:#{@options.port} (handshake timeout), will retry in #{nextDelay} sec."
-          when 'handshake-failed'
-            @log "LiveReload cannot connect to #{@options.host}:#{@options.port} (handshake failed), will retry in #{nextDelay} sec."
-          when 'manual' then #nop
-          when 'error'  then #nop
-          else
-            @log "LiveReload disconnected from #{@options.host}:#{@options.port} (#{reason}), reconnecting in #{nextDelay} sec."
+    #   error: (e) =>
+    #     if e instanceof ProtocolError
+    #       console.log "#{e.message}." if console?
+    #     else
+    #       console.log "LiveReload internal error: #{e.message}" if console?
 
-      message: (message) =>
-        switch message.command
-          when 'reload' then @performReload(message)
-          when 'alert'  then @performAlert(message)
+    #   disconnected: (reason, nextDelay) =>
+    #     @listeners.disconnect?()
+    #     switch reason
+    #       when 'cannot-connect'
+    #         @log "LiveReload cannot connect to #{@options.host}:#{@options.port}, will retry in #{nextDelay} sec."
+    #       when 'broken'
+    #         @log "LiveReload disconnected from #{@options.host}:#{@options.port}, reconnecting in #{nextDelay} sec."
+    #       when 'handshake-timeout'
+    #         @log "LiveReload cannot connect to #{@options.host}:#{@options.port} (handshake timeout), will retry in #{nextDelay} sec."
+    #       when 'handshake-failed'
+    #         @log "LiveReload cannot connect to #{@options.host}:#{@options.port} (handshake failed), will retry in #{nextDelay} sec."
+    #       when 'manual' then #nop
+    #       when 'error'  then #nop
+    #       else
+    #         @log "LiveReload disconnected from #{@options.host}:#{@options.port} (#{reason}), reconnecting in #{nextDelay} sec."
+
+    #   message: (message) =>
+    #     switch message.command
+    #       when 'reload' then @performReload(message)
+    #       when 'alert'  then @performAlert(message)
 
     @initialized = yes
 
@@ -103,7 +105,7 @@ exports.LiveReload = class LiveReload
 
   shutDown: ->
     return unless @initialized
-    @connector.disconnect()
+    # @connector.disconnect()
     @log "LiveReload disconnected."
     @listeners.shutdown?()
 
@@ -153,12 +155,11 @@ exports.LiveReload = class LiveReload
 
   analyze: ->
     return unless @initialized
-    return unless @connector.protocol >= 7
 
     pluginsData = {}
     for plugin in @plugins
       pluginsData[plugin.constructor.identifier] = pluginData = plugin.analyze?() || {}
       pluginData.version = plugin.constructor.version
 
-    @connector.sendCommand { command: 'info', plugins: pluginsData, url: @window.location.href }
+    # @connector.sendCommand { command: 'info', plugins: pluginsData, url: @window.location.href }
     return

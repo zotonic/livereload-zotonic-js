@@ -21,7 +21,8 @@ splitUrl = (url) ->
   return { url, params, hash }
 
 pathFromUrl = (url) ->
-  url = splitUrl(url).url
+  # Remove Zotonic time hash from the url
+  url = splitUrl(url).url.replace(/~[0-9]+/, '')
   if url.indexOf('file://') == 0
     path = url.replace ///^ file:// (localhost)? ///, ''
   else

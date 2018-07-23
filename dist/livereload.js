@@ -1,180 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 (function() {
-  var Connector, PROTOCOL_6, PROTOCOL_7, Parser, Version, _ref;
-
-  _ref = require('./protocol'), Parser = _ref.Parser, PROTOCOL_6 = _ref.PROTOCOL_6, PROTOCOL_7 = _ref.PROTOCOL_7;
-
-  Version = '2.2.2';
-
-  exports.Connector = Connector = (function() {
-    function Connector(options, WebSocket, Timer, handlers) {
-      var path;
-      this.options = options;
-      this.WebSocket = WebSocket;
-      this.Timer = Timer;
-      this.handlers = handlers;
-      path = this.options.path ? "" + this.options.path : "livereload";
-      this._uri = "ws" + (this.options.https ? "s" : "") + "://" + this.options.host + ":" + this.options.port + "/" + path;
-      this._nextDelay = this.options.mindelay;
-      this._connectionDesired = false;
-      this.protocol = 0;
-      this.protocolParser = new Parser({
-        connected: (function(_this) {
-          return function(protocol) {
-            _this.protocol = protocol;
-            _this._handshakeTimeout.stop();
-            _this._nextDelay = _this.options.mindelay;
-            _this._disconnectionReason = 'broken';
-            return _this.handlers.connected(protocol);
-          };
-        })(this),
-        error: (function(_this) {
-          return function(e) {
-            _this.handlers.error(e);
-            return _this._closeOnError();
-          };
-        })(this),
-        message: (function(_this) {
-          return function(message) {
-            return _this.handlers.message(message);
-          };
-        })(this)
-      });
-      this._handshakeTimeout = new Timer((function(_this) {
-        return function() {
-          if (!_this._isSocketConnected()) {
-            return;
-          }
-          _this._disconnectionReason = 'handshake-timeout';
-          return _this.socket.close();
-        };
-      })(this));
-      this._reconnectTimer = new Timer((function(_this) {
-        return function() {
-          if (!_this._connectionDesired) {
-            return;
-          }
-          return _this.connect();
-        };
-      })(this));
-      this.connect();
-    }
-
-    Connector.prototype._isSocketConnected = function() {
-      return this.socket && this.socket.readyState === this.WebSocket.OPEN;
-    };
-
-    Connector.prototype.connect = function() {
-      this._connectionDesired = true;
-      if (this._isSocketConnected()) {
-        return;
-      }
-      this._reconnectTimer.stop();
-      this._disconnectionReason = 'cannot-connect';
-      this.protocolParser.reset();
-      this.handlers.connecting();
-      this.socket = new this.WebSocket(this._uri);
-      this.socket.onopen = (function(_this) {
-        return function(e) {
-          return _this._onopen(e);
-        };
-      })(this);
-      this.socket.onclose = (function(_this) {
-        return function(e) {
-          return _this._onclose(e);
-        };
-      })(this);
-      this.socket.onmessage = (function(_this) {
-        return function(e) {
-          return _this._onmessage(e);
-        };
-      })(this);
-      return this.socket.onerror = (function(_this) {
-        return function(e) {
-          return _this._onerror(e);
-        };
-      })(this);
-    };
-
-    Connector.prototype.disconnect = function() {
-      this._connectionDesired = false;
-      this._reconnectTimer.stop();
-      if (!this._isSocketConnected()) {
-        return;
-      }
-      this._disconnectionReason = 'manual';
-      return this.socket.close();
-    };
-
-    Connector.prototype._scheduleReconnection = function() {
-      if (!this._connectionDesired) {
-        return;
-      }
-      if (!this._reconnectTimer.running) {
-        this._reconnectTimer.start(this._nextDelay);
-        return this._nextDelay = Math.min(this.options.maxdelay, this._nextDelay * 2);
-      }
-    };
-
-    Connector.prototype.sendCommand = function(command) {
-      if (this.protocol == null) {
-        return;
-      }
-      return this._sendCommand(command);
-    };
-
-    Connector.prototype._sendCommand = function(command) {
-      return this.socket.send(JSON.stringify(command));
-    };
-
-    Connector.prototype._closeOnError = function() {
-      this._handshakeTimeout.stop();
-      this._disconnectionReason = 'error';
-      return this.socket.close();
-    };
-
-    Connector.prototype._onopen = function(e) {
-      var hello;
-      this.handlers.socketConnected();
-      this._disconnectionReason = 'handshake-failed';
-      hello = {
-        command: 'hello',
-        protocols: [PROTOCOL_6, PROTOCOL_7]
-      };
-      hello.ver = Version;
-      if (this.options.ext) {
-        hello.ext = this.options.ext;
-      }
-      if (this.options.extver) {
-        hello.extver = this.options.extver;
-      }
-      if (this.options.snipver) {
-        hello.snipver = this.options.snipver;
-      }
-      this._sendCommand(hello);
-      return this._handshakeTimeout.start(this.options.handshake_timeout);
-    };
-
-    Connector.prototype._onclose = function(e) {
-      this.protocol = 0;
-      this.handlers.disconnected(this._disconnectionReason, this._nextDelay);
-      return this._scheduleReconnection();
-    };
-
-    Connector.prototype._onerror = function(e) {};
-
-    Connector.prototype._onmessage = function(e) {
-      return this.protocolParser.process(e.data);
-    };
-
-    return Connector;
-
-  })();
-
-}).call(this);
-
-},{"./protocol":6}],2:[function(require,module,exports){
-(function() {
   var CustomEvents;
 
   CustomEvents = {
@@ -214,7 +39,7 @@
 
 }).call(this);
 
-},{}],3:[function(require,module,exports){
+},{}],2:[function(require,module,exports){
 (function() {
   var LessPlugin;
 
@@ -278,12 +103,9 @@
 
 }).call(this);
 
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 (function() {
-  var Connector, LiveReload, Options, ProtocolError, Reloader, Timer,
-    __hasProp = {}.hasOwnProperty;
-
-  Connector = require('./connector').Connector;
+  var LiveReload, Options, ProtocolError, Reloader, Timer;
 
   Timer = require('./timer').Timer;
 
@@ -295,103 +117,19 @@
 
   exports.LiveReload = LiveReload = (function() {
     function LiveReload(window) {
-      var k, v, _ref;
       this.window = window;
       this.listeners = {};
       this.plugins = [];
       this.pluginIdentifiers = {};
-      this.console = this.window.console && this.window.console.log && this.window.console.error ? this.window.location.href.match(/LR-verbose/) ? this.window.console : {
+      this.console = this.window.console && this.window.console.log && this.window.console.error ? true ? this.window.console : {
         log: function() {},
         error: this.window.console.error.bind(this.window.console)
       } : {
         log: function() {},
         error: function() {}
       };
-      if (!(this.WebSocket = this.window.WebSocket || this.window.MozWebSocket)) {
-        this.console.error("LiveReload disabled because the browser does not seem to support web sockets");
-        return;
-      }
-      if ('LiveReloadOptions' in window) {
-        this.options = new Options();
-        _ref = window['LiveReloadOptions'];
-        for (k in _ref) {
-          if (!__hasProp.call(_ref, k)) continue;
-          v = _ref[k];
-          this.options.set(k, v);
-        }
-      } else {
-        this.options = Options.extract(this.window.document);
-        if (!this.options) {
-          this.console.error("LiveReload disabled because it could not find its own <SCRIPT> tag");
-          return;
-        }
-      }
       this.reloader = new Reloader(this.window, this.console, Timer);
-      this.connector = new Connector(this.options, this.WebSocket, Timer, {
-        connecting: (function(_this) {
-          return function() {};
-        })(this),
-        socketConnected: (function(_this) {
-          return function() {};
-        })(this),
-        connected: (function(_this) {
-          return function(protocol) {
-            var _base;
-            if (typeof (_base = _this.listeners).connect === "function") {
-              _base.connect();
-            }
-            _this.log("LiveReload is connected to " + _this.options.host + ":" + _this.options.port + " (protocol v" + protocol + ").");
-            return _this.analyze();
-          };
-        })(this),
-        error: (function(_this) {
-          return function(e) {
-            if (e instanceof ProtocolError) {
-              if (typeof console !== "undefined" && console !== null) {
-                return console.log("" + e.message + ".");
-              }
-            } else {
-              if (typeof console !== "undefined" && console !== null) {
-                return console.log("LiveReload internal error: " + e.message);
-              }
-            }
-          };
-        })(this),
-        disconnected: (function(_this) {
-          return function(reason, nextDelay) {
-            var _base;
-            if (typeof (_base = _this.listeners).disconnect === "function") {
-              _base.disconnect();
-            }
-            switch (reason) {
-              case 'cannot-connect':
-                return _this.log("LiveReload cannot connect to " + _this.options.host + ":" + _this.options.port + ", will retry in " + nextDelay + " sec.");
-              case 'broken':
-                return _this.log("LiveReload disconnected from " + _this.options.host + ":" + _this.options.port + ", reconnecting in " + nextDelay + " sec.");
-              case 'handshake-timeout':
-                return _this.log("LiveReload cannot connect to " + _this.options.host + ":" + _this.options.port + " (handshake timeout), will retry in " + nextDelay + " sec.");
-              case 'handshake-failed':
-                return _this.log("LiveReload cannot connect to " + _this.options.host + ":" + _this.options.port + " (handshake failed), will retry in " + nextDelay + " sec.");
-              case 'manual':
-                break;
-              case 'error':
-                break;
-              default:
-                return _this.log("LiveReload disconnected from " + _this.options.host + ":" + _this.options.port + " (" + reason + "), reconnecting in " + nextDelay + " sec.");
-            }
-          };
-        })(this),
-        message: (function(_this) {
-          return function(message) {
-            switch (message.command) {
-              case 'reload':
-                return _this.performReload(message);
-              case 'alert':
-                return _this.performAlert(message);
-            }
-          };
-        })(this)
-      });
+      this.window.zotonic_live_reloader = this.reloader;
       this.initialized = true;
     }
 
@@ -425,7 +163,6 @@
       if (!this.initialized) {
         return;
       }
-      this.connector.disconnect();
       this.log("LiveReload disconnected.");
       return typeof (_base = this.listeners).shutdown === "function" ? _base.shutdown() : void 0;
     };
@@ -464,9 +201,6 @@
       if (!this.initialized) {
         return;
       }
-      if (!(this.connector.protocol >= 7)) {
-        return;
-      }
       pluginsData = {};
       _ref = this.plugins;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -474,11 +208,6 @@
         pluginsData[plugin.constructor.identifier] = pluginData = (typeof plugin.analyze === "function" ? plugin.analyze() : void 0) || {};
         pluginData.version = plugin.constructor.version;
       }
-      this.connector.sendCommand({
-        command: 'info',
-        plugins: pluginsData,
-        url: this.window.location.href
-      });
     };
 
     return LiveReload;
@@ -487,7 +216,7 @@
 
 }).call(this);
 
-},{"./connector":1,"./options":5,"./protocol":6,"./reloader":7,"./timer":9}],5:[function(require,module,exports){
+},{"./options":4,"./protocol":5,"./reloader":6,"./timer":8}],4:[function(require,module,exports){
 (function() {
   var Options;
 
@@ -549,7 +278,7 @@
 
 }).call(this);
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function() {
   var PROTOCOL_6, PROTOCOL_7, Parser, ProtocolError,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
@@ -646,7 +375,7 @@
 
 }).call(this);
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 (function() {
   var IMAGE_STYLES, Reloader, numberOfMatchingSegments, pathFromUrl, pathsMatch, pickBestMatch, splitUrl;
 
@@ -681,7 +410,7 @@
 
   pathFromUrl = function(url) {
     var path;
-    url = splitUrl(url).url;
+    url = splitUrl(url).url.replace(/~[0-9]+/, '');
     if (url.indexOf('file://') === 0) {
       path = url.replace(/^file:\/\/(localhost)?/, '');
     } else {
@@ -1123,7 +852,7 @@
 
 }).call(this);
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 (function() {
   var CustomEvents, LiveReload, k;
 
@@ -1157,7 +886,7 @@
 
 }).call(this);
 
-},{"./customevents":2,"./less":3,"./livereload":4}],9:[function(require,module,exports){
+},{"./customevents":1,"./less":2,"./livereload":3}],8:[function(require,module,exports){
 (function() {
   var Timer;
 
@@ -1201,4 +930,4 @@
 
 }).call(this);
 
-},{}]},{},[8]);
+},{}]},{},[7]);

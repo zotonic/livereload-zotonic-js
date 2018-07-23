@@ -6,7 +6,6 @@ if (typeof window === 'undefined') {
 
 
 require('coffee-script/register');
-require('./connector_test');
 require('./options_test');
 require('./protocol_test');
 require('./timer_test');
